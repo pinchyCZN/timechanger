@@ -5,6 +5,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "resource.h"
+int move_console(int x,int y)
+{
+	char title[MAX_PATH]={0};
+	HWND hcon;
+	GetConsoleTitle(title,sizeof(title));
+	if(title[0]!=0){
+		hcon=FindWindow(NULL,title);
+		SetWindowPos(hcon,0,x,y,0,0,SWP_NOZORDER|SWP_NOSIZE);
+	}
+	return 0;
+}
 void open_console()
 {
 	char title[MAX_PATH]={0};
@@ -186,17 +197,16 @@ void __cdecl thread(void *args[])
 				break;
 			}
 		}
-		ResetEvent(event);
 	}
 }
 int update_time(int h,int m,int s)
 {
 	SYSTEMTIME time;
-	GetSystemTime(&time);
+	GetLocalTime(&time);
 	time.wHour=h;
 	time.wMinute=m;
 	time.wSecond=s;
-	SetSystemTime(&time);
+	SetLocalTime(&time);
 	return 0;
 }
 int update_controls(HWND hwnd)
@@ -206,6 +216,10 @@ int update_controls(HWND hwnd)
 	GetSystemTime(&systime);
 	GetTimeFormat(LOCALE_USER_DEFAULT,0,&systime,"HH':'mm':'ss",time,sizeof(time));
 	SetDlgItemText(hwnd,IDC_CURRENT_TIME,time);
+
+	GetLocalTime(&systime);
+	GetTimeFormat(LOCALE_USER_DEFAULT,0,&systime,"HH':'mm':'ss",time,sizeof(time));
+	SetDlgItemText(hwnd,IDC_LOCALTIME,time);
 	SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETPOS,TRUE,systime.wHour);
 	SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETPOS,TRUE,systime.wMinute);
 	SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETPOS,TRUE,systime.wSecond);
@@ -248,17 +262,30 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETRANGE,TRUE,MAKELONG(0,59));
 		{
 			static void *list[3];
-			event=CreateEvent(NULL,TRUE,FALSE,"thread");
+			event=CreateEvent(NULL,FALSE,FALSE,"thread");
 			list[0]=event;
 			list[1]=&thread_task;
-			//list[3]=hwnd;
-			ResetEvent(event);
-			//_beginthread(thread,0,list);
+			list[3]=hwnd;
+			_beginthreadex(NULL,0,thread,list,0,0);
 		}
 		PostMessage(hwnd,WM_APP,0,0);
 		SetTimer(hwnd,1337,1000,0);
 		break;
 	case WM_TIMER:
+#ifdef _DEBUG
+		{
+			static int show_console=TRUE;
+			if(show_console){
+				RECT rect;
+				show_console=FALSE;
+				GetWindowRect(hwnd,&rect);
+				open_console();
+				move_console(rect.right,rect.top);
+			}
+		}
+#endif;
+
+
 		if(tracking)
 			break;
 		update_controls(hwnd);
@@ -297,18 +324,11 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 			break;
 		case IDC_RESETTIME:
 			thread_task=CMD_RESETTIME;
-			{
-				int i=SetEvent(event);
-				get_last_error();
-				//get_time_daytime_protocol("70.84.194.243",1313,TRUE);
-
-			}
+			SetEvent(event);
+			get_last_error();
+			get_time_daytime_protocol("70.84.194.243",1313,TRUE);
 			break;
 		case IDC_HOUR:
-			{
-				int i;
-				i=i;
-			}
 			break;
 		case IDC_MINUTE:
 			break;
@@ -332,7 +352,6 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 }
 int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow)
 {
-	open_console();
 	DialogBox(hInstance,IDD_DIALOG1,NULL,dialogproc);
 	return 0;
 }
