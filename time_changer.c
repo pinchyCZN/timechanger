@@ -5,6 +5,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "resource.h"
+void hide_console()
+{
+	char title[MAX_PATH]={0};
+	HANDLE hcon;
+
+	GetConsoleTitle(title,sizeof(title));
+	if(title[0]!=0){
+		hcon=FindWindow(NULL,title);
+		ShowWindow(hcon,SW_HIDE);
+		SetForegroundWindow(hcon);
+	}
+}
 int move_console(int x,int y)
 {
 	char title[MAX_PATH]={0};
@@ -173,27 +185,30 @@ int get_time_daytime_protocol(char *timeserver,int port,int update)
 enum{
 	CMD_RESETTIME,
 };
+
+HANDLE thread_event;
 void __cdecl thread(void *args[])
 {
-	HANDLE event=0;
 	HWND hwnd=0;
 	int *command=0;
-	event=args[0];
-	command=args[1];
-	hwnd=args[3];
-	if(event==0 || command==0){
-		MessageBox(0,"null pointer passed to thread","error",MB_OK|MB_SYSTEMMODAL);
+	command=args[0];
+	hwnd=args[1];
+	thread_event=CreateEvent(NULL,FALSE,FALSE,"thread_event");
+
+	if(thread_event==0 || command==0){
+		MessageBox(0,"null parameters for thread","error",MB_OK|MB_SYSTEMMODAL);
 		return;
 	}
 	while(TRUE){
 		int id;
-		id=WaitForSingleObject(event,INFINITE);
+		id=WaitForSingleObject(thread_event,INFINITE);
 		if(id==WAIT_OBJECT_0){
 			switch(*command){
 			case CMD_RESETTIME:
 				get_time_daytime_protocol("70.84.194.243",1313,TRUE);
 				if(hwnd)
 					PostMessage(hwnd,WM_APP,0,0);
+				Sleep(1000);
 				break;
 			}
 		}
@@ -211,15 +226,15 @@ int update_time(int h,int m,int s)
 }
 int update_controls(HWND hwnd)
 {
-	char time[80];
+	char time[20];
+	char date[20];
+	char str[40];
 	SYSTEMTIME systime;
-	GetSystemTime(&systime);
-	GetTimeFormat(LOCALE_USER_DEFAULT,0,&systime,"HH':'mm':'ss",time,sizeof(time));
-	SetDlgItemText(hwnd,IDC_CURRENT_TIME,time);
-
 	GetLocalTime(&systime);
 	GetTimeFormat(LOCALE_USER_DEFAULT,0,&systime,"HH':'mm':'ss",time,sizeof(time));
-	SetDlgItemText(hwnd,IDC_LOCALTIME,time);
+	GetDateFormat(LOCALE_USER_DEFAULT,0,&systime,"M'/'d'/'yyyy",date,sizeof(date));
+	_snprintf(str,sizeof(str),"%s  -  %s",time,date);
+	SetDlgItemText(hwnd,IDC_LOCALTIME,str);
 	SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETPOS,TRUE,systime.wHour);
 	SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETPOS,TRUE,systime.wMinute);
 	SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETPOS,TRUE,systime.wSecond);
@@ -239,9 +254,9 @@ int get_last_error()
 LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 {
 	static int thread_task;
-	static HANDLE event;
+	static int freeze_timer=FALSE;
 	static int tracking=FALSE;
-
+	static SYSTEMTIME current_time;
 
 	if(FALSE)
 	if(msg!=WM_NCHITTEST&&msg!=WM_SETCURSOR&&msg!=WM_ENTERIDLE&&msg!=WM_MOUSEMOVE&&msg!=WM_NCMOUSEMOVE&&msg!=WM_CTLCOLORSTATIC
@@ -261,33 +276,28 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 		SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETRANGE,TRUE,MAKELONG(0,59));
 		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETRANGE,TRUE,MAKELONG(0,59));
 		{
-			static void *list[3];
-			event=CreateEvent(NULL,FALSE,FALSE,"thread");
-			list[0]=event;
-			list[1]=&thread_task;
-			list[3]=hwnd;
-			_beginthreadex(NULL,0,thread,list,0,0);
+			static void *list[2];
+			list[0]=&thread_task;
+			list[1]=hwnd;
+			_beginthread(thread,0,list);
 		}
 		PostMessage(hwnd,WM_APP,0,0);
 		SetTimer(hwnd,1337,1000,0);
-		break;
-	case WM_TIMER:
 #ifdef _DEBUG
 		{
-			static int show_console=TRUE;
-			if(show_console){
-				RECT rect;
-				show_console=FALSE;
-				GetWindowRect(hwnd,&rect);
-				open_console();
-				move_console(rect.right,rect.top);
-			}
+			RECT rect;
+			GetWindowRect(hwnd,&rect);
+			open_console();
+			move_console(rect.right,rect.top);
 		}
 #endif;
-
-
+		break;
+	case WM_TIMER:
 		if(tracking)
 			break;
+		if(freeze_timer){
+			update_time(current_time.wHour,current_time.wMinute,current_time.wSecond);
+		}
 		update_controls(hwnd);
 		break;
 	case WM_HSCROLL:
@@ -312,6 +322,9 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 				m=SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_GETPOS,0,0);
 				s=SendDlgItemMessage(hwnd,IDC_SECOND,TBM_GETPOS,0,0);
 				update_time(h,m,s);
+				current_time.wHour=h;
+				current_time.wMinute=m;
+				current_time.wSecond=s;
 				PostMessage(hwnd,WM_APP,0,0);
 				printf("updated time %02i:%02i:%02i\n",h,m,s);
 			}
@@ -324,9 +337,8 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 			break;
 		case IDC_RESETTIME:
 			thread_task=CMD_RESETTIME;
-			SetEvent(event);
-			get_last_error();
-			get_time_daytime_protocol("70.84.194.243",1313,TRUE);
+			if(thread_event)
+				SetEvent(thread_event);
 			break;
 		case IDC_HOUR:
 			break;
@@ -334,14 +346,35 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 			break;
 		case IDC_SECOND:
 			break;
-
+		case IDC_TOP:
+			SetWindowPos( hwnd, IsDlgButtonChecked( hwnd, LOWORD(wparam) )? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE );
+			break;
+		case IDC_FREEZE:
+			if(IsDlgButtonChecked(hwnd,LOWORD(wparam))){
+				freeze_timer=TRUE;
+				GetLocalTime(&current_time);
+			}
+			else
+				freeze_timer=FALSE;
+			break;
+		case IDC_DEBUG:
+			if(IsDlgButtonChecked(hwnd,LOWORD(wparam))){
+				RECT rect;
+				GetWindowRect(hwnd,&rect);
+				open_console();
+				move_console(rect.right,rect.top);
+			}
+			else
+				hide_console();
+			break;
 		}
 		break;
 	case WM_APP:
 		update_controls(hwnd);
-		switch(lparam){
-		default:
-			break;
+		{
+			SYSTEMTIME time;
+			GetLocalTime(&time);
+			current_time=time;
 		}
 		break;
 	case WM_CLOSE:

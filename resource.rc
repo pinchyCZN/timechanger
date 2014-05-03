@@ -33,24 +33,24 @@ FONT 8, "MS Sans Serif"
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,0,108,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,349,108,50,14
-    EDITTEXT        IDC_CURRENT_TIME,63,2,68,14,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Time UTC",IDC_STATIC,5,5,53,8
     CONTROL         "Slider1",IDC_HOUR,"msctls_trackbar32",TBS_BOTH | 
-                    TBS_NOTICKS | WS_TABSTOP,52,38,377,15
+                    TBS_NOTICKS | WS_TABSTOP,52,27,377,15
     CONTROL         "Slider2",IDC_MINUTE,"msctls_trackbar32",TBS_BOTH | 
-                    TBS_NOTICKS | WS_TABSTOP,52,59,377,15
+                    TBS_NOTICKS | WS_TABSTOP,52,54,377,15
     CONTROL         "Slider3",IDC_SECOND,"msctls_trackbar32",TBS_BOTH | 
-                    TBS_NOTICKS | WS_TABSTOP,52,78,377,15
-    LTEXT           "Hour",IDC_TXTHOUR,11,41,16,8
-    LTEXT           "Minute",IDC_TXTMIN,7,64,22,8
-    LTEXT           "Second",IDC_TXTSECOND,6,81,26,8
+                    TBS_NOTICKS | WS_TABSTOP,51,81,377,15
+    LTEXT           "Hour",IDC_TXTHOUR,16,31,16,8
+    LTEXT           "Minute",IDC_TXTMIN,11,58,22,8
+    LTEXT           "Second",IDC_TXTSECOND,12,85,26,8
     PUSHBUTTON      "Reset Time",IDC_RESETTIME,379,1,50,14
     CONTROL         "Always on top",IDC_TOP,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,147,3,60,10
+                    WS_TABSTOP,187,3,60,10
     CONTROL         "Freeze clock",IDC_FREEZE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,229,3,57,10
-    EDITTEXT        IDC_LOCALTIME,63,18,68,14,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Time local",IDC_STATIC,5,21,52,8
+                    WS_TABSTOP,257,3,57,10
+    EDITTEXT        IDC_LOCALTIME,66,4,95,14,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Local Time:",IDC_STATIC,5,7,52,8
+    CONTROL         "Debug",IDC_DEBUG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    321,2,37,10
 END
 
 
