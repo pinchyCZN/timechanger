@@ -224,6 +224,16 @@ int update_time(int h,int m,int s)
 	SetLocalTime(&time);
 	return 0;
 }
+int update_date(int y,int m,int d)
+{
+	SYSTEMTIME time;
+	GetLocalTime(&time);
+	time.wYear=y;
+	time.wMonth=m;
+	time.wDay=d;
+	SetLocalTime(&time);
+	return 0;
+}
 int update_controls(HWND hwnd)
 {
 	char time[20];
@@ -235,9 +245,16 @@ int update_controls(HWND hwnd)
 	GetDateFormat(LOCALE_USER_DEFAULT,0,&systime,"M'/'d'/'yyyy",date,sizeof(date));
 	_snprintf(str,sizeof(str),"%s  -  %s",time,date);
 	SetDlgItemText(hwnd,IDC_LOCALTIME,str);
-	SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETPOS,TRUE,systime.wHour);
-	SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETPOS,TRUE,systime.wMinute);
-	SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETPOS,TRUE,systime.wSecond);
+	if(IsDlgButtonChecked(hwnd,IDC_SETDATE)){
+		SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETPOS,TRUE,systime.wYear-1900);
+		SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETPOS,TRUE,systime.wMonth);
+		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETPOS,TRUE,systime.wDay);
+	}
+	else{
+		SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETPOS,TRUE,systime.wHour);
+		SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETPOS,TRUE,systime.wMinute);
+		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETPOS,TRUE,systime.wSecond);
+	}
 	return 0;
 }
 int get_last_error()
@@ -250,6 +267,19 @@ int get_last_error()
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         str,sizeof(str),NULL);
 	return printf("msg(0x%08X,%i)=%s\n",dw,dw,str);
+}
+int set_range(HWND hwnd,int set_date)
+{
+	if(set_date){
+		SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETRANGE,TRUE,MAKELONG(0,150));
+		SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETRANGE,TRUE,MAKELONG(0,12));
+		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETRANGE,TRUE,MAKELONG(0,31));
+	}
+	else{
+		SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETRANGE,TRUE,MAKELONG(0,23));
+		SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETRANGE,TRUE,MAKELONG(0,59));
+		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETRANGE,TRUE,MAKELONG(0,59));
+	}
 }
 LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 {
@@ -272,9 +302,7 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 
 	switch(msg){
 	case WM_INITDIALOG:
-		SendDlgItemMessage(hwnd,IDC_HOUR,TBM_SETRANGE,TRUE,MAKELONG(0,23));
-		SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_SETRANGE,TRUE,MAKELONG(0,59));
-		SendDlgItemMessage(hwnd,IDC_SECOND,TBM_SETRANGE,TRUE,MAKELONG(0,59));
+		set_range(hwnd,FALSE);
 		{
 			static void *list[2];
 			list[0]=&thread_task;
@@ -317,16 +345,31 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 				break;
 			}
 			if(update){
-				int h,m,s;
-				h=SendDlgItemMessage(hwnd,IDC_HOUR,TBM_GETPOS,0,0);
-				m=SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_GETPOS,0,0);
-				s=SendDlgItemMessage(hwnd,IDC_SECOND,TBM_GETPOS,0,0);
-				update_time(h,m,s);
-				current_time.wHour=h;
-				current_time.wMinute=m;
-				current_time.wSecond=s;
-				PostMessage(hwnd,WM_APP,0,0);
-				printf("updated time %02i:%02i:%02i\n",h,m,s);
+				if(IsDlgButtonChecked(hwnd,IDC_SETDATE)){
+					int y,m,d;
+					y=SendDlgItemMessage(hwnd,IDC_HOUR,TBM_GETPOS,0,0);
+					m=SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_GETPOS,0,0);
+					d=SendDlgItemMessage(hwnd,IDC_SECOND,TBM_GETPOS,0,0);
+					y+=1900;
+					update_date(y,m,d);
+					current_time.wYear=y;
+					current_time.wMonth=m;
+					current_time.wDay=d;
+					PostMessage(hwnd,WM_APP,0,0);
+					printf("updated date %04i:%02i:%02i\n",y,m,d);
+				}
+				else{
+					int h,m,s;
+					h=SendDlgItemMessage(hwnd,IDC_HOUR,TBM_GETPOS,0,0);
+					m=SendDlgItemMessage(hwnd,IDC_MINUTE,TBM_GETPOS,0,0);
+					s=SendDlgItemMessage(hwnd,IDC_SECOND,TBM_GETPOS,0,0);
+					update_time(h,m,s);
+					current_time.wHour=h;
+					current_time.wMinute=m;
+					current_time.wSecond=s;
+					PostMessage(hwnd,WM_APP,0,0);
+					printf("updated time %02i:%02i:%02i\n",h,m,s);
+				}
 			}
 		}
 		break;
@@ -334,6 +377,26 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 		switch(LOWORD(wparam)){
 		case IDCANCEL:
 			EndDialog(hwnd,0);
+			break;
+		case IDC_SETDATE:
+			{
+				int i;
+				static struct CONTROL_TEXT{
+					int control;char *text_time;char *text_date;
+				}control_text[]={
+					{IDC_TXTHOUR_YEAR,"Hour","Year"},
+					{IDC_TXTMIN_MONTH,"Minute","Month"},
+					{IDC_TXTSECOND_DAY,"Second","Day"}};
+				
+				for(i=0;i<sizeof(control_text)/sizeof(struct CONTROL_TEXT);i++){
+					char *s=control_text[i].text_time;
+					if(IsDlgButtonChecked(hwnd,IDC_SETDATE))
+						s=control_text[i].text_date;
+					SetDlgItemText(hwnd,control_text[i].control,s);
+				}
+				set_range(hwnd,IsDlgButtonChecked(hwnd,IDC_SETDATE));
+				update_controls(hwnd);
+			}
 			break;
 		case IDC_RESETTIME:
 			thread_task=CMD_RESETTIME;

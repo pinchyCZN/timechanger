@@ -39,9 +39,9 @@ BEGIN
                     TBS_NOTICKS | WS_TABSTOP,52,54,377,15
     CONTROL         "Slider3",IDC_SECOND,"msctls_trackbar32",TBS_BOTH | 
                     TBS_NOTICKS | WS_TABSTOP,51,81,377,15
-    LTEXT           "Hour",IDC_TXTHOUR,16,31,16,8
-    LTEXT           "Minute",IDC_TXTMIN,11,58,22,8
-    LTEXT           "Second",IDC_TXTSECOND,12,85,26,8
+    LTEXT           "Hour",IDC_TXTHOUR_YEAR,34,30,16,8
+    LTEXT           "Minute",IDC_TXTMIN_MONTH,28,58,22,8
+    LTEXT           "Second",IDC_TXTSECOND_DAY,24,84,26,8
     PUSHBUTTON      "Reset Time",IDC_RESETTIME,379,1,50,14
     CONTROL         "Always on top",IDC_TOP,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,187,3,60,10
@@ -51,6 +51,8 @@ BEGIN
     LTEXT           "Local Time:",IDC_STATIC,5,7,52,8
     CONTROL         "Debug",IDC_DEBUG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     321,2,37,10
+    CONTROL         "set date",IDC_SETDATE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,187,17,41,10
 END
 
 
@@ -77,6 +79,22 @@ BEGIN
     "\0"
 END
 
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_DIALOG1, DIALOG
+    BEGIN
+        VERTGUIDE, 50
+    END
+END
 #endif    // APSTUDIO_INVOKED
 
 #endif    // English (U.S.) resources
