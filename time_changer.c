@@ -448,6 +448,11 @@ LRESULT CALLBACK dialogproc( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam )
 }
 int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow)
 {
+    INITCOMMONCONTROLSEX ctrls;
+	ctrls.dwSize=sizeof(ctrls);
+    ctrls.dwICC = ICC_LISTVIEW_CLASSES;
+	InitCommonControlsEx(&ctrls);
+
 	DialogBox(hInstance,IDD_DIALOG1,NULL,dialogproc);
 	return 0;
 }
