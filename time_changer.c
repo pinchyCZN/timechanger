@@ -450,7 +450,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 {
     INITCOMMONCONTROLSEX ctrls;
 	ctrls.dwSize=sizeof(ctrls);
-    ctrls.dwICC = ICC_LISTVIEW_CLASSES;
+    ctrls.dwICC = ICC_BAR_CLASSES;
 	InitCommonControlsEx(&ctrls);
 
 	DialogBox(hInstance,IDD_DIALOG1,NULL,dialogproc);
